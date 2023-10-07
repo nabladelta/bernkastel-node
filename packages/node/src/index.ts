@@ -6,7 +6,7 @@ import fs from 'fs'
 import { DATA_FOLDER, PORT, REQ_SIZE_LIMIT, THUMB_FORMAT, TOPICS } from './constants'
 import { mainLogger } from './logger'
 import { nodeSetup } from './setup'
-import { BBNode } from '@bernkastel/core'
+import { BBNode } from '@nabladelta/bernkastel'
 
 const log = mainLogger.getSubLogger({name: 'HTTP'})
 

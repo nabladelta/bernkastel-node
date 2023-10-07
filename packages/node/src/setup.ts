@@ -1,5 +1,5 @@
 import { RLN } from "@nabladelta/rln"
-import { BBNode } from "@bernkastel/core"
+import { BBNode } from "@nabladelta/bernkastel"
 import { DATA_FOLDER, GROUPID, GROUP_FILE, SECRET, TOPICS } from './constants'
 
 export async function nodeSetup(logger: any) {

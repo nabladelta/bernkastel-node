@@ -3,12 +3,514 @@
 // The following are defined in lib/types.js:
 // - KeyPair
 // - DhtNode
+declare module 'autobase'
+declare module 'protomux'
+declare module 'compact-encoding'
 
 declare module 'brittle'
 declare module 'multi-core-indexer'
 declare module '@mapeo/sqlite-indexer'
 declare module 'sodium-universal'
 declare module 'base32.js'
+
+declare module 'protomux-rpc' {
+  import { TypedEmitter } from 'tiny-typed-emitter'
+  import { Duplex } from 'streamx'
+
+  export interface ProtomuxRPCEvents {
+    'close': () => void
+    'open': (handshake: Buffer) => void
+    'destroy': () => void
+  }
+
+  export interface ResponseOpts {
+    // Optional encoding for both requests and responses, defaults to raw
+    valueEncoding?: encoding,
+    requestEncoding?: encoding, // Optional encoding for requests
+    responseEncoding?: encoding // Optional encoding for responses
+  }
+
+  export interface RequestOpts extends ResponseOpts {
+    timeout?: number // Optional request timeout in milliseconds
+  }
+  export interface ProtomuxRPCOpts {
+    // Optional binary ID to identify this RPC channel
+    id?: Buffer,
+    // Optional protocol name
+    protocol?: string,
+    // Optional default value encoding
+    valueEncoding?: encoding,
+    // Optional handshake
+    handshake?: Buffer,
+    // Optional encoding for the handshake
+    handshakeEncoding?: encoding
+  }
+
+  export default class ProtomuxRPC extends TypedEmitter<ProtomuxRPCEvents> {
+    constructor(stream: Duplex | any, options?: ProtomuxRPCOpts)
+    closed: boolean
+    mux: any
+    stream: Duplex | any
+
+    request(method: string, value: any, options?: RequestOpts): Promise<any>
+    respond(method: string, options: ResponseOpts, handler: (value: any) => any): void
+    unrespond(method: string): void
+    cork(): void
+    uncork(): void
+    end(): Promise<void>
+    destroy(): void
+  }
+}
+declare module 'hyperblobs' {
+  import Hypercore from 'hypercore'
+
+  interface SizeOpts {
+    blockSize: number
+  }
+
+  export interface BlobBlockID {
+    blockOffset: number,
+    blockLength: number,
+  }
+
+  export interface BlobID extends BlobBlockID {
+    byteOffset: number
+    byteLength: number
+  }
+
+  const test: BlobID
+
+  export default class Hyperblobs {
+    feed: Hypercore
+    locked: boolean
+
+    constructor(core: Hypercore, opts?: SizeOpts)
+
+    put(blob: Buffer | Uint8Array | string, opts?: SizeOpts): Promise<BlobID>
+    get(id: BlobID, opts?: SizeOpts): Promise<Buffer | null>
+    clear(id: BlobBlockID): Promise<void>
+  }
+}
+
+declare module 'hyperdrive' {
+  import Corestore from 'corestore'
+  import Hypercore, { RangeOpts } from 'hypercore'
+  import Hyperbee, { StreamOpts, Batch } from 'hyperbee'
+  import { Writable, Readable } from 'streamx'
+  import Hyperblobs from 'hyperblobs'
+  export interface PathEntry {
+    seq: number,
+    key: string,
+    value: {
+      executable: boolean, // whether the blob at the path is an executable
+      linkname: null // if entry is not symlink, otherwise a string to the entry this links to
+      blob: { // a Hyperblob id that can be used to fetch the blob associated with this entry
+        blockOffset: number,
+        blockLength: number,
+        byteOffset: number,
+        byteLength: number
+      },
+      metadata: null
+    }
+  }
+
+  export interface MirrorDiff {
+    op: 'add' | string,
+    key: string,
+    bytesRemoved: number,
+    bytesAdded: number
+  }
+  export class MirrorDrive {
+    count: {files: number, add: number, remove: number, change: number}
+
+    done(): Promise<void>
+
+    [Symbol.asyncIterator] (): Readable<MirrorDiff>
+  }
+  export default class Hyperdrive {
+    core: Hypercore
+    key: Buffer
+    discoveryKey: Buffer
+    contentKey: Buffer
+    version: number
+
+    constructor(corestore: Corestore, key?: Buffer)
+
+    [Symbol.asyncIterator] (): Readable<PathEntry>
+
+    ready(): Promise<void>
+
+    update(): Promise<void>
+
+    close(): Promise<void>
+
+    clear(path: string, opts?: {diff?: boolean}): Promise<number | null>
+
+    clearAll(opts?: {diff?: boolean}): Promise<number | null>
+
+    purge(): Promise<void>
+
+    get(path: string): Promise<Buffer | null>
+
+    entry(path: string): Promise<PathEntry>
+
+    symlink(path: string, linkname: string): Promise<void>
+
+    getBlobs(): Promise<Hyperblobs>
+
+    entries(opts?: StreamOpts): Readable<PathEntry>
+
+    put(path: string, blob: Buffer, opts?: {executable?: boolean}): Promise<void>
+
+    createWriteStream(path: string, opts?: {executable?: boolean}): Writable<Buffer>
+
+    del(path: string): Promise<void>
+
+    checkout(version: number): Hyperdrive
+
+    diff(
+      version: number,
+      folder: string,
+      opts?: any
+    ): Readable<{
+      left: PathEntry | null,
+      right: PathEntry | null
+    }>
+
+    downloadDiff(version: number, folder: string, opts?: any): Promise<void>
+
+    list(folder: string, opts?: {recursive?: boolean}): Readable<PathEntry>
+
+    download(folder: string, opts?: {recursive?: boolean}): Promise<void>
+
+    readdir(folder: string): Readable<string>
+
+    downloadRange(dbRanges: RangeOpts, blobRanges: RangeOpts): Promise<void>
+
+    batch(): Batch<string, Buffer>
+
+    findingPeers(): () => void
+
+    createReadStream(path: string, opts?: StreamOpts): Readable<Buffer>
+
+    flush(): Promise<void>
+
+    mirror(out: Hyperdrive, opts?: any): MirrorDrive
+  }
+}
+
+declare module 'hypercore' {
+  import { TypedEmitter } from 'tiny-typed-emitter'
+  import { NoiseSecretStream } from '@hyperswarm/secret-stream'
+  import RandomAccessStorage from 'random-access-storage'
+  import { Writable, Readable } from 'streamx'
+  export interface KeyPair {
+    publicKey: Buffer | Uint8Array
+    secretKey: Buffer | Uint8Array
+    auth: {
+      sign: (msg: Buffer) => Buffer | Uint8Array
+      verify: (signable: Buffer, signature: Buffer) => boolean
+    }
+  }
+  export interface HypercoreOpts {
+    createIfMissing?: boolean,
+    overwrite?: boolean,
+    sparse?: boolean
+    valueEncoding?: 'json' | 'utf-8' | 'binary'
+    encodeBatch?: (batch: any) => any
+    keyPair?: KeyPair
+    encryptionKey?: string,
+    onwait?: () => void
+    timeout?: number
+
+    cache?: boolean | Xache
+    crypto?: any
+    storage?: any
+    snapshot?: boolean
+    auth?: any
+    autoClose?: boolean
+    wait?: boolean
+  }
+  export interface GetOpts {
+    wait?: boolean
+    onwait?: () => void
+    timeout?: number
+    valueEncoding?: 'json' | 'utf-8' | 'binary'
+    decrypt?: true
+  }
+
+  export interface SessionOpts {
+    wait?: boolean
+    onwait?: () => void
+    sparse?: boolean
+    class?: any
+  }
+
+
+  export interface StreamOpts {
+    start?: number
+    end?: number
+    live?: boolean
+    snapshot?: boolean
+  }
+
+  export interface RangeOpts {
+    start?: number,
+    end?: number,
+    blocks?: number[],
+    linear?: boolean
+  }
+
+  export interface Info {
+    key: Buffer
+    discoveryKey: Buffer
+    length: number
+    contiguousLength: number
+    byteLength: number
+    fork: number
+    padding: number
+    storage: {
+      oplog: number
+      tree: number
+      blocks: number
+      bitfield: number
+    }
+  }
+
+  interface HypercoreEvents {
+    'append': () => void,
+    'truncate': (ancestors: any, forkId: number) => void
+    'ready': () => void,
+    'close': () => void,
+  }
+
+  export default class Hypercore extends TypedEmitter<HypercoreEvents> {
+    readable: boolean | null
+    id: string | null
+    key: Buffer | null
+    keyPair: KeyPair | null
+    discoveryKey: Buffer | null
+    encryptionKey: Buffer | null
+    writable: boolean
+
+    length: number
+    contiguousLength: number
+    fork: number
+
+    padding: number
+  
+    constructor(
+      storage?: string | ((filename: string) => RandomAccessStorage) | HypercoreOpts,
+      key?: Buffer | string | HypercoreOpts,
+      opts?: HypercoreOpts
+    )
+  
+    append(block: Buffer | Buffer[] | string | string[]): Promise<{length: number, byteLength: number}>
+
+    get(index: number, opts?: GetOpts): Promise<Buffer>
+
+    has(start: number, end?: number): Promise<boolean>
+    
+    update(opts?: { wait: boolean }): Promise<boolean>
+
+    seek(
+      byteOffset?: number,
+      opts?: { wait?: number, timeout?: number }
+    ): Promise<{index: number, relativeOffset: number}>
+
+    createReadStream(opts?: StreamOpts): Readable<Buffer>
+
+    createWriteStream(): Writable<Buffer>
+
+    clear(start: number, end?: number, options?: { diff?: boolean }): Promise<void>
+
+    purge(): Promise<void>
+
+    truncate(newLength: number, forkId?: number): Promise<void>
+
+    treeHash(length?: number): Promise<Buffer>
+    
+    download(range?: RangeOpts): {
+      done: () => Promise<void>,
+      destroy: () => void
+    }
+
+    info(opts?: { storage: boolean }): Promise<Info>
+
+    close(): Promise<void>
+
+    ready(): Promise<void>
+
+    replicate(isInitiator: boolean | NoiseSecretStream, opts?: any): NoiseSecretStream
+
+    findingPeers(): () => void
+
+    session(opts?: SessionOpts): Hypercore
+
+    snapshot(opts?: SessionOpts): Hypercore
+        
+    registerExtension(name: string, handlers?: { encoding?: any, onmessage: (m: any, peer: any) => void }): any  
+    
+    setUserData(key: any, value: any): Promise<any>
+
+    getUserData(key: any): Promise<any>
+      
+    static createProtocolStream(...args: any[]): void
+    
+    static defaultStorage(storage: any, opts?: any): any
+      
+    static getProtocolMuxer(stream: NoiseSecretStream): Protomux
+  }
+}
+
+declare module 'corestore' {
+  import Hypercore, { KeyPair } from 'hypercore'
+  import { TypedEmitter } from 'tiny-typed-emitter'
+  import { NoiseSecretStream } from '@hyperswarm/secret-stream'
+
+  export interface CorestoreOpts {
+    primaryKey?: Buffer | Uint8Array
+    namespace?: Buffer | Uint8Array
+    cache?: boolean
+    overwrite?: boolean
+    poolSize?: number
+  }
+
+  export interface GetOpts {
+    name?: string,
+    publicKey?: Buffer | Uint8Array,
+    secretKey?: Buffer | Uint8Array
+    cache?: boolean | Xache
+  }
+
+  export default class Corestore extends TypedEmitter<any> {
+    constructor(
+      storage: string | RandomAccessStorage | ((filename: string) => RandomAccessStorage),
+      opts?: CorestoreOpts
+    )
+    
+    ready(): Promise<void>
+
+    findingPeers(): () => void
+
+    createKeyPair(name: any, namespace?: Buffer | Uint8Array): Promise<KeyPair>
+
+    namespace(name: any): Corestore
+
+    session(opts?: CorestoreOpts): Corestore
+
+    close(): Promise<void>
+
+    replicate(isInitiator: boolean | NoiseSecretStream, opts?: any): NoiseSecretStream
+  
+    get(opts: Buffer | Uint8Array | GetOpts): Hypercore
+  }
+}
+
+declare module 'hyperbee' {
+  import Hypercore, {GetOpts} from 'hypercore'
+  import { Writable, Readable } from 'streamx'
+
+  export interface HyperbeeOpts {
+    keyEncoding?: 'ascii' | 'utf-8' | 'binary',
+    valueEncoding?: 'json' | 'utf-8' | 'binary'
+    extension?: any,
+    metadata?: any,
+    lock?: any,
+    sep?: Buffer | Uint8Array
+    readonly?: boolean
+    prefix?: any
+    checkout?: number
+  }
+  export interface SnapshotOptions {
+    keyEncoding?: 'ascii' | 'utf-8' | 'binary',
+    valueEncoding?: 'json' | 'utf-8' | 'binary'
+  }
+
+  export interface SubOptions {
+    sep?: Buffer
+    keyEncoding?: 'ascii' | 'utf-8' | 'binary',
+    valueEncoding?: 'json' | 'utf-8' | 'binary'
+  }
+
+  export type Cas<K,V> = { 
+    cas: (prev: V, next: V) => boolean 
+  }
+  export class Batch<K,V> {
+    put(key: K, value?: V, opts?: Cas<K, V>): Promise<void>
+    get(key: K): Promise<{ seq: number, key: K, value: V }>
+    del(key: K, opts?: Cas<K, V>): Promise<void>
+    flush(): Promise<void>
+    destroy(): Promise<void>
+  }
+
+  export interface StreamOpts {
+    gt?: number,
+    gte?: number,
+    lt?: number,
+    lte?: number,
+    reverse?: boolean,
+    limit?: number
+  }
+
+  export interface HistoryStreamOpts {
+    gt?: number,
+    gte?: number,
+    lt?: number,
+    lte?: number,
+    reverse?: boolean,
+    limit?: number,
+    live?: boolean
+  }
+  export default class Hyperbee<K, V> {
+    version: number
+    core: Hypercore
+
+    constructor(feed: Hypercore, opts?: HyperbeeOpts)
+
+    ready(): Promise<void>
+
+    close(): Promise<void>
+
+    update(): Promise<boolean>
+
+    get(key: K): Promise<{ seq: number, key: K, value: V } | null>
+
+    put(key: K, value?: V, opts?: Cas<K, V>): Promise<void>
+
+    del(key: K, opts?: Cas<K, V>): Promise<void>
+
+    sub(prefix: K, opts?: SubOptions): Hyperbee<K, V>
+
+    batch(): Batch<K, V>
+
+    checkout(version: number, opts?: SnapshotOptions): Hyperbee<K, V>
+
+    snapshot(opts?: SnapshotOptions): Hyperbee<K, V>
+
+    peek(opts?: StreamOpts): Promise<{ seq: number, key: K, value: V }>
+
+    getHeader(opts?: GetOpts): Promise<any>
+
+    createReadStream(opts?: StreamOpts): Readable<{ key: K, value: V }>
+
+    createDiffStream(
+        otherVersion: number,
+        opts?: StreamOpts
+    ): Readable<{
+      left: { key: K, value: V },
+      right: { key: K, value: V }
+    }>
+
+    createHistoryStream(opts?: HistoryStreamOpts): Readable<{ type: 'put' | 'del', key: K, value: V }>
+
+    createRangeIterator(opts?: StreamOpts): any
+
+    watch(range?: StreamOpts, onchange: (newVersion, oldVersion) => void): any
+
+    static async isHyperbee(core: Hypercore, opts?: GetOpts): Promise<boolean>
+  }
+}
 
 declare module 'kademlia-routing-table' {
   import { TypedEmitter } from 'tiny-typed-emitter'
@@ -80,7 +582,7 @@ declare module 'hyperswarm' {
   import { TypedEmitter } from 'tiny-typed-emitter'
   import Dht, { RelayAddress } from '@hyperswarm/dht'
   import NoiseSecretStream from '@hyperswarm/secret-stream'
-
+  import { KeyPair } from 'hypercore'
   interface PeerDiscoveryOpts {
     wait?: number | null
     onpeer?: () => void
@@ -144,8 +646,8 @@ declare module 'hyperswarm' {
     get server(): boolean
     get prioritized(): boolean
 
-    reconnect(val: any): void
-    ban(val: any): void
+    reconnect(val?: any): void
+    ban(val?: any): void
   }
 
   class Hyperswarm extends TypedEmitter<{
@@ -161,6 +663,8 @@ declare module 'hyperswarm' {
     readonly peers: Map<string, PeerInfo>
     readonly explicitPeers: Set<PeerInfo>
     readonly dht: Dht
+
+    readonly keyPair: KeyPair
 
     constructor(opts?: {
       seed?: Buffer
@@ -201,7 +705,7 @@ declare module 'hyperswarm' {
 
 declare module 'udx-native' {
   import { TypedEmitter } from 'tiny-typed-emitter'
-  import { Duplex, Duplex, Duplex } from 'streamx'
+  import { Duplex } from 'streamx'
 
   export interface Interface {
     name: string

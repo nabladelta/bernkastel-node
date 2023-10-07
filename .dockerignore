@@ -33,8 +33,4 @@ yarn-error.log*
 /packages/client/build
 /packages/client/node_modules
 
-/packages/core/dist
-/packages/core/build
-/packages/core/node_modules
-
 /node_modules

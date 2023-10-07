@@ -11,17 +11,10 @@
       "forceConsistentCasingInFileNames": true,
       "rootDir": "./src",
       "outDir": "./dist",
-      "typeRoots": [
-        "./node_modules/@types",
-        "./packages/core"
-      ],
     },
     "files": [
     ],
     "references": [
-      {
-        "path": "./packages/core"
-      },
       {
         "path": "./packages/node"
       }
