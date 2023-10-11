@@ -5,7 +5,7 @@ import { WETH_ABI, WETH_ADDRESS, contractData } from "./contractData";
 import { RLNContract } from '@nabladelta/rln'
 import { poseidon1 } from 'poseidon-lite'
 import { Proof } from "@nabladelta/rln/src/providers/contractProvider/contractWrapper";
-import { WithdrawProver } from 'rlnjs'
+import { WithdrawProver, getDefaultWithdrawParams } from 'rlnjs'
 
 export type User = {
     userAddress: string,
@@ -106,8 +106,9 @@ export async function registerRLNMembership(secret: string, multiplier: number, 
     }
 }
 
-export async function withdrawMembership(rlnContract: RLNContract, secret: string, withdrawAddress: string) {
-    const prover = new WithdrawProver("", "")
+export async function withdrawRLNMembership(rlnContract: RLNContract, secret: string, withdrawAddress: string) {
+    const {wasmFile, finalZkey} = await getDefaultWithdrawParams()
+    const prover = new WithdrawProver(wasmFile, finalZkey)
     const proof = await prover.generateProof({identitySecret: BigInt('0x'+secret), address: BigInt(withdrawAddress)})
     const identityCommitment = poseidon1([BigInt('0x'+secret)])
     const tx = await rlnContract.withdraw(identityCommitment, proof.proof)

@@ -18,7 +18,7 @@ import { ArrowBackIcon, ArrowDownIcon, ArrowUpIcon, CopyIcon } from '@chakra-ui/
 import { Link } from 'react-router-dom'
 import { useToast } from '@chakra-ui/react'
 import { RLNContract } from '@nabladelta/rln'
-import { User, Withdrawal, calculateNecessaryWETHBalance, connectMetaMask, getSecret, registerRLNMembership } from './ethUtils'
+import { User, Withdrawal, calculateNecessaryWETHBalance, connectMetaMask, getSecret, registerRLNMembership, withdrawRLNMembership } from './ethUtils'
 import { contractData } from './contractData'
 import { ethers } from 'ethers'
 import { poseidon1 } from 'poseidon-lite'
@@ -138,6 +138,30 @@ function MembershipSetup() {
         })
     }
   }
+  async function withdrawMembership() {
+    if (!rlnContract || !secret || !membership) {
+      return
+  }
+  try {
+      await withdrawRLNMembership(rlnContract, secret, membership.userAddress)
+      toast({
+          title: "Withdrawal Started",
+          description: "This is a two step process. Please wait for the next block to complete the withdrawal.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+      })
+  } catch (e) {
+      console.error(e)
+      toast({
+          title: "Withdrawal error",
+          description: `${e}`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+      })
+  }
+  }
 
   return (
     <VStack align="flex-start" spacing={8}>
@@ -207,7 +231,7 @@ function MembershipSetup() {
             <Input value={price} isReadOnly={true} />
         </InputGroup>
         </FormControl>
-        <Button onClick={async () => {alert("Not Yet Implemented")}} {...buttonStyle}>Withdraw from RLN Group</Button>
+        <Button onClick={async () => { await withdrawMembership()}} {...buttonStyle}>Withdraw from RLN Group</Button>
     </>}
     </Wrap>
     <HStack id={'bottom'} spacing={6}>
