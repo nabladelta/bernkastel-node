@@ -2,7 +2,7 @@ import { RLN, ContractProvider, RLNContract } from "@nabladelta/rln"
 import { ethers } from "ethers"
 import { BBNode } from "@nabladelta/bernkastel"
 import { getDefaultWithdrawParams } from 'rlnjs'
-import { DATA_FOLDER, GROUPID, GROUP_FILE, SECRET, TOPICS, PRIVATE_KEY, CONTRACT_ADDRESS, BLOCKCHAIN_PROVIDER, CONTRACT_AT_BLOCK } from './constants'
+import { DATA_FOLDER, GROUPID, GROUP_FILE, SECRET, TOPICS, PRIVATE_KEY, CONTRACT_ADDRESS, BLOCKCHAIN_RPC, BLOCKCHAIN_RPC_WS, CONTRACT_AT_BLOCK } from './constants'
 
 export async function nodeSetup(logger: any) {
     const rln = await RLN.load(SECRET!, GROUP_FILE)
@@ -13,7 +13,7 @@ export async function nodeSetup(logger: any) {
 }
 
 export async function contractSetup(logger: any) {
-    const provider = new ethers.JsonRpcProvider(BLOCKCHAIN_PROVIDER)
+    const provider = BLOCKCHAIN_RPC_WS ? new ethers.WebSocketProvider(BLOCKCHAIN_RPC_WS) : new ethers.JsonRpcProvider(BLOCKCHAIN_RPC)
     const wallet = new ethers.Wallet(PRIVATE_KEY!, provider)
     const withdrawParams = await getDefaultWithdrawParams()
     const rlnProvider = await ContractProvider.load(

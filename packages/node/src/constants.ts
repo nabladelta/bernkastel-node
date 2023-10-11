@@ -6,7 +6,8 @@ dotenv.config()
 export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0x04BFd2960bCe936b4318CE3a72250f2147a71eE6"
 export const CONTRACT_AT_BLOCK = parseInt(process.env.CONTRACT_AT_BLOCK || "9844026")
 export const PRIVATE_KEY = process.env.PRIVATE_KEY
-export const BLOCKCHAIN_PROVIDER = process.env.BLOCKCHAIN_PROVIDER || "http://localhost:8545"
+export const BLOCKCHAIN_RPC = process.env.BLOCKCHAIN_RPC || "http://localhost:8545"
+export const BLOCKCHAIN_RPC_WS = process.env.BLOCKCHAIN_RPC_WS
 
 export const PORT = process.env.PORT || "1832"
 export const TOPICS = process.env.TOPICS || "a"
@@ -34,4 +35,4 @@ const LOGLEVELS: {[name: string]: number | undefined} = {
 
 export const LOGLEVEL = LOGLEVELS[(process.env.LOGLEVEL || "INFO").toLowerCase()] || 3
 export const GROUP_FILE = process.env.GROUP_FILE || "groupData.json"
-export const GROUPID = 'AAA'
+export const GROUPID = '1'
