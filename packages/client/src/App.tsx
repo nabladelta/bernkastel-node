@@ -11,7 +11,7 @@ import Catalog from "./pages/board/catalog"
 import theme from "./theme"
 import BoardList from "./components/ListBoards"
 import Home from "./pages/home/home"
-import MembershipSetup from "./pages/membership/membership"
+// import MembershipSetup from "./pages/membership/membership"
 
 export const App = () => (
   <ChakraProvider theme={theme}>
@@ -23,7 +23,7 @@ export const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/:board/catalog" element={<Catalog />} />
             <Route path="/:board/thread/:id" element={<ThreadPage />} />
-            <Route path="/setup" element={<MembershipSetup />} />
+            {/* <Route path="/setup" element={<MembershipSetup />} /> */}
           </Routes>
         </Box>
       </Grid>
