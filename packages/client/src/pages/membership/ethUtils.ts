@@ -57,10 +57,10 @@ export async function connectMetaMask(toast: (options?: UseToastOptions | undefi
     }
 }
 
-export async function getSecret(signer: ethers.Signer, contractAddress: string): Promise<string> {
+export async function getSecret(signer: ethers.Signer, contractAddress: string): Promise<bigint> {
     const signedMessage = await signer.signMessage(`Provide membership secret for: ${contractAddress}`)
     const secret = crypto.createHash('sha256').update(signedMessage).digest('hex')
-    return secret
+    return BigInt('0x'+secret)
 }
 
 async function ensureWETHBalance(desiredBalanceWei: bigint, provider: ethers.Provider, signer: ethers.Signer): Promise<boolean> {
@@ -91,7 +91,7 @@ export function calculateNecessaryWETHBalance(multiplier: number): bigint {
     return necessaryBalance
 }
 
-export async function registerRLNMembership(secret: string, multiplier: number, rlnContract: RLNContract) {
+export async function registerRLNMembership(secret: bigint, multiplier: number, rlnContract: RLNContract) {
     const necessaryBalance = calculateNecessaryWETHBalance(multiplier)
     const signer = rlnContract["signer"]
     if (!signer) throw new Error("No signer found")
@@ -99,18 +99,19 @@ export async function registerRLNMembership(secret: string, multiplier: number, 
     if (balanceChanged) {
         console.log("Deposited WETH")
     }
-    const identityCommitment = poseidon1([BigInt('0x'+secret)])
+    const identityCommitment = poseidon1([secret])
     const tx = await rlnContract.register(identityCommitment, BigInt(1))
     if (tx.status === 0) {
         throw new Error("Transaction failed")
     }
 }
 
-export async function withdrawRLNMembership(rlnContract: RLNContract, secret: string, withdrawAddress: string) {
+export async function withdrawRLNMembership(rlnContract: RLNContract, secret: bigint, withdrawAddress: string) {
     const {wasmFile, finalZkey} = await getDefaultWithdrawParams()
     const prover = new WithdrawProver(wasmFile, finalZkey)
-    const proof = await prover.generateProof({identitySecret: BigInt('0x'+secret), address: BigInt(withdrawAddress)})
-    const identityCommitment = poseidon1([BigInt('0x'+secret)])
+    const proof = await prover.generateProof({identitySecret: secret, address: BigInt(withdrawAddress)})
+    console.log("Proof", proof)
+    const identityCommitment = poseidon1([secret])
     const tx = await rlnContract.withdraw(identityCommitment, proof.proof)
     if (tx.status === 0) {
         throw new Error("Transaction failed")

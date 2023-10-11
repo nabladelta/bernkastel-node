@@ -30,7 +30,7 @@ function MembershipSetup() {
   const toast = useToast()
 
   const [rlnContract, setRlnContract] = useState<RLNContract | null>(null)
-  const [secret, setSecret] = useState<string|null>(null)
+  const [secret, setSecret] = useState<bigint|null>(null)
   const [membership, setMembership] = useState<User|null>(null)
   const [withdrawal, setWithdrawal] = useState<Withdrawal|null>(null)
 
@@ -81,7 +81,7 @@ function MembershipSetup() {
         contractAddress: contractData.address,
         contractAtBlock: contractData.block
     })
-    let s
+    let s: bigint | undefined = undefined
     if (!secret) {
         try {
             s = await getSecret(signer, contractData.address)
@@ -92,9 +92,12 @@ function MembershipSetup() {
             return
         }
     }
-    const identityCommitment = poseidon1([BigInt('0x'+ s)])
+    if (!s) return
+
+    const identityCommitment = poseidon1([s])
     const user = await contract.getUser(identityCommitment)
     if (user.messageLimit > 0) {
+      console.log(user)
       setMembership(user)
       setPrice(ethers.formatEther(calculateNecessaryWETHBalance(parseInt(user.messageLimit.toString()))) + " ETH")
     }
@@ -127,6 +130,8 @@ function MembershipSetup() {
             duration: 5000,
             isClosable: true,
         })
+        // Refresh the page to update the membership
+        window.location.reload()
     } catch (e) {
         console.error(e)
         toast({
@@ -177,11 +182,11 @@ function MembershipSetup() {
     </HStack>
     <Wrap spacing='40px' >
     {(!rlnContract || !secret) && <Button onClick={loadContract} {...buttonStyle}>Connect Metamask</Button>}
-    {rlnContract && secret && !membership && <>
+    {rlnContract && !membership && <>
         <FormControl>
         <FormLabel htmlFor="disabledInput">Your Secret</FormLabel>
         <InputGroup>
-            <Input ref={inputRef} value={secret} isReadOnly={true} />
+            <Input ref={inputRef} value={secret?.toString(16)} isReadOnly={true} />
             <InputRightAddon>
             <IconButton aria-label='Copy Secret' onClick={handleCopyClick} {...buttonStyle} icon={<CopyIcon />} />
             </InputRightAddon>
@@ -208,11 +213,11 @@ function MembershipSetup() {
         <Button onClick={async () => {await registerMembership()}} {...buttonStyle}>Register Into RLN Group</Button>
     </>}
 
-    {rlnContract && secret && membership && !withdrawal && <>
+    {rlnContract && membership && !withdrawal && <>
         <FormControl>
         <FormLabel htmlFor="disabledInput">Your Secret</FormLabel>
         <InputGroup>
-            <Input ref={inputRef} value={secret} isReadOnly={true} />
+            <Input ref={inputRef} value={secret?.toString(16)} isReadOnly={true} />
             <InputRightAddon>
             <IconButton aria-label='Copy Secret' onClick={handleCopyClick} {...buttonStyle} icon={<CopyIcon />} />
             </InputRightAddon>
