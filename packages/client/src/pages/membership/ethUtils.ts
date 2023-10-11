@@ -4,6 +4,19 @@ import crypto from "crypto"
 import { WETH_ABI, WETH_ADDRESS, contractData } from "./contractData";
 import { RLNContract } from '@nabladelta/rln'
 import { poseidon1 } from 'poseidon-lite'
+import { Proof } from "@nabladelta/rln/src/providers/contractProvider/contractWrapper";
+
+export type User = {
+    userAddress: string,
+    messageLimit: bigint,
+    index: bigint,
+}
+
+export type Withdrawal = {
+    blockNumber: bigint,
+    amount: bigint,
+    receiver: string,
+}
 
 export async function connectMetaMask(toast: (options?: UseToastOptions | undefined) => ToastId): Promise<ethers.BrowserProvider | undefined> {
     let ethereum = (window as any).ethereum;
@@ -87,6 +100,14 @@ export async function registerRLNMembership(secret: string, multiplier: number, 
     }
     const identityCommitment = poseidon1([BigInt('0x'+secret)])
     const tx = await rlnContract.register(identityCommitment, BigInt(1))
+    if (tx.status === 0) {
+        throw new Error("Transaction failed")
+    }
+}
+
+export async function withdrawMembership(rlnContract: RLNContract, secret: string, proof: Proof) {
+    const identityCommitment = poseidon1([BigInt('0x'+secret)])
+    const tx = await rlnContract.withdraw(identityCommitment, proof)
     if (tx.status === 0) {
         throw new Error("Transaction failed")
     }

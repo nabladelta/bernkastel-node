@@ -18,16 +18,22 @@ import { ArrowBackIcon, ArrowDownIcon, ArrowUpIcon, CopyIcon } from '@chakra-ui/
 import { Link } from 'react-router-dom'
 import { useToast } from '@chakra-ui/react'
 import { RLNContract } from '@nabladelta/rln'
-import { calculateNecessaryWETHBalance, connectMetaMask, getSecret, registerRLNMembership } from './ethUtils'
+import { User, Withdrawal, calculateNecessaryWETHBalance, connectMetaMask, getSecret, registerRLNMembership } from './ethUtils'
 import { contractData } from './contractData'
 import { ethers } from 'ethers'
+import { poseidon1 } from 'poseidon-lite'
+
 export const buttonStyle = { variant:'outline', colorScheme:'gray', fontSize:'20px' }
+
 
 function MembershipSetup() {
   const toast = useToast()
 
   const [rlnContract, setRlnContract] = useState<RLNContract | null>(null)
   const [secret, setSecret] = useState<string|null>(null)
+  const [membership, setMembership] = useState<User|null>(null)
+  const [withdrawal, setWithdrawal] = useState<Withdrawal|null>(null)
+
   const [error, setError] = useState<string | null>(null)
   const [multiplier, setMultiplier] = useState<string>("1")
   const [price, setPrice] = useState<string>(ethers.formatEther(calculateNecessaryWETHBalance(1)) + " ETH")
@@ -75,16 +81,29 @@ function MembershipSetup() {
         contractAddress: contractData.address,
         contractAtBlock: contractData.block
     })
-
+    let s
     if (!secret) {
         try {
-            setSecret(await getSecret(signer, contractData.address))
+            s = await getSecret(signer, contractData.address)
+            setSecret(s)
         } catch (e) {
             console.error(e)
             alert("Error getting secret.")
             return
         }
     }
+    const identityCommitment = poseidon1([BigInt('0x'+ s)])
+    const user = await contract.getUser(identityCommitment)
+    if (user.messageLimit > 0) {
+      setMembership(user)
+      setPrice(ethers.formatEther(calculateNecessaryWETHBalance(parseInt(user.messageLimit.toString()))) + " ETH")
+    }
+    const withdrawal = await contract.getWithdrawal(identityCommitment)
+    if (withdrawal.amount > 0) {
+      setWithdrawal(withdrawal)
+    }
+    console.log(user, withdrawal)
+
     setRlnContract(contract)
     toast({
       title: "Contract Loaded",
@@ -134,7 +153,7 @@ function MembershipSetup() {
     </HStack>
     <Wrap spacing='40px' >
     {(!rlnContract || !secret) && <Button onClick={loadContract} {...buttonStyle}>Connect Metamask</Button>}
-    {rlnContract && secret && <>
+    {rlnContract && secret && !membership && <>
         <FormControl>
         <FormLabel htmlFor="disabledInput">Your Secret</FormLabel>
         <InputGroup>
@@ -163,6 +182,32 @@ function MembershipSetup() {
         </InputGroup>
         </FormControl>
         <Button onClick={async () => {await registerMembership()}} {...buttonStyle}>Register Into RLN Group</Button>
+    </>}
+
+    {rlnContract && secret && membership && !withdrawal && <>
+        <FormControl>
+        <FormLabel htmlFor="disabledInput">Your Secret</FormLabel>
+        <InputGroup>
+            <Input ref={inputRef} value={secret} isReadOnly={true} />
+            <InputRightAddon>
+            <IconButton aria-label='Copy Secret' onClick={handleCopyClick} {...buttonStyle} icon={<CopyIcon />} />
+            </InputRightAddon>
+        </InputGroup>
+        </FormControl>
+        
+        <FormControl>
+        <FormLabel htmlFor="disabledInput">Your Message Limit</FormLabel>
+        <InputGroup>
+            <Input value={membership.messageLimit.toString()} isReadOnly={true} />
+        </InputGroup>
+        </FormControl>
+        <FormControl>
+        <FormLabel htmlFor="disabledInput">Your Deposited Amount</FormLabel>
+        <InputGroup>
+            <Input value={price} isReadOnly={true} />
+        </InputGroup>
+        </FormControl>
+        <Button onClick={async () => {alert("Not Yet Implemented")}} {...buttonStyle}>Withdraw from RLN Group</Button>
     </>}
     </Wrap>
     <HStack id={'bottom'} spacing={6}>
