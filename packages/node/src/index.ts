@@ -5,7 +5,7 @@ import path from 'path'
 import fs from 'fs'
 import { DATA_FOLDER, PORT, REQ_SIZE_LIMIT, THUMB_FORMAT, TOPICS } from './constants'
 import { mainLogger } from './logger'
-import { nodeSetup } from './setup'
+import { contractSetup } from './setup'
 import { BBNode } from '@nabladelta/bernkastel'
 
 const log = mainLogger.getSubLogger({name: 'HTTP'})
@@ -157,7 +157,7 @@ app.get('(/*)?', function (req, res) {
    res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));
  })
 
- nodeSetup(mainLogger.getSubLogger({name: 'NODE'})).then(n => {
+ contractSetup(mainLogger.getSubLogger({name: 'NODE'})).then(n => {
   node = n.node
   app.listen(PORT, () => {
     log.info(`⚡️API is running at http://localhost:${PORT}`)

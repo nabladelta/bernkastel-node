@@ -1,10 +1,9 @@
 import { ToastId, UseToastOptions } from "@chakra-ui/react";
 import { ethers } from "ethers"
-import crypto from "crypto"
 import { WETH_ABI, WETH_ADDRESS, contractData } from "./contractData";
 import { RLNContract } from '@nabladelta/rln'
-import { poseidon1 } from 'poseidon-lite'
 import { WithdrawProver, getDefaultWithdrawParams } from 'rlnjs'
+import { Identity } from "@semaphore-protocol/identity"
 
 export type User = {
     userAddress: string,
@@ -56,14 +55,7 @@ export async function connectMetaMask(toast: (options?: UseToastOptions | undefi
     }
 }
 
-export async function getSecret(signer: ethers.Signer, contractAddress: string): Promise<bigint> {
-    const signedMessage = await signer.signMessage(`Provide membership secret for: ${contractAddress}`)
-    const secret = crypto.createHash('sha256').update(signedMessage).digest('hex')
-    return BigInt('0x'+secret)
-}
-
 async function ensureWETHBalance(desiredBalanceWei: bigint, provider: ethers.Provider, signer: ethers.Signer): Promise<boolean> {
-
     const WETHContract = new ethers.Contract(WETH_ADDRESS, WETH_ABI, signer)
     // Check WETH balance
     const currentBalance = BigInt((await WETHContract.balanceOf(signer.getAddress())).toString())
@@ -90,7 +82,7 @@ export function calculateNecessaryWETHBalance(multiplier: number): bigint {
     return necessaryBalance
 }
 
-export async function registerRLNMembership(secret: bigint, multiplier: number, rlnContract: RLNContract) {
+export async function registerRLNMembership(identity: Identity, multiplier: number, rlnContract: RLNContract) {
     const necessaryBalance = calculateNecessaryWETHBalance(multiplier)
     const signer = rlnContract["signer"]
     if (!signer) throw new Error("No signer found")
@@ -98,28 +90,25 @@ export async function registerRLNMembership(secret: bigint, multiplier: number, 
     if (balanceChanged) {
         console.log("Deposited WETH")
     }
-    const identityCommitment = poseidon1([secret])
-    const tx = await rlnContract.register(identityCommitment, BigInt(1))
+    const tx = await rlnContract.register(identity.commitment, BigInt(1))
     if (tx.status === 0) {
         throw new Error("Transaction failed")
     }
 }
 
-export async function withdrawRLNMembership(rlnContract: RLNContract, secret: bigint, withdrawAddress: string) {
+export async function withdrawRLNMembership(rlnContract: RLNContract, identity: Identity, withdrawAddress: string) {
     const {wasmFile, finalZkey} = await getDefaultWithdrawParams()
     const prover = new WithdrawProver(wasmFile, finalZkey)
-    const proof = await prover.generateProof({identitySecret: secret, address: BigInt(withdrawAddress)})
+    const proof = await prover.generateProof({identitySecret: identity.getSecret(), address: BigInt(withdrawAddress)})
     console.log("Proof", proof)
-    const identityCommitment = poseidon1([secret])
-    const tx = await rlnContract.withdraw(identityCommitment, proof.proof)
+    const tx = await rlnContract.withdraw(identity.commitment, proof.proof)
     if (tx.status === 0) {
         throw new Error("Transaction failed")
     }
 }
 
-export async function releaseRLNWithdrawal(rlnContract: RLNContract, secret: bigint) {
-    const identityCommitment = poseidon1([secret])
-    const tx = await rlnContract.release(identityCommitment)
+export async function releaseRLNWithdrawal(rlnContract: RLNContract, identity: Identity) {
+    const tx = await rlnContract.release(identity.commitment,)
     if (tx.status === 0) {
         throw new Error("Transaction failed")
     }

@@ -3,6 +3,11 @@ import path from 'path'
 import sharp, { FormatEnum } from 'sharp'
 dotenv.config()
 
+export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0x04BFd2960bCe936b4318CE3a72250f2147a71eE6"
+export const CONTRACT_AT_BLOCK = parseInt(process.env.CONTRACT_AT_BLOCK || "9844026")
+export const PRIVATE_KEY = process.env.PRIVATE_KEY
+export const BLOCKCHAIN_PROVIDER = process.env.BLOCKCHAIN_PROVIDER || "http://localhost:8545"
+
 export const PORT = process.env.PORT || "1832"
 export const TOPICS = process.env.TOPICS || "a"
 export const SECRET = process.env.SECRET
