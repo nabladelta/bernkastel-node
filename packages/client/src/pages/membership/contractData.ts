@@ -2,7 +2,8 @@ export const contractData = {
     address: '0x04BFd2960bCe936b4318CE3a72250f2147a71eE6',
     block: 9844026,
     chainID: 5,
-    minimalDeposit: "5000000000000000"
+    minimalDeposit: "5000000000000000",
+    freezePeriod: 100,
 } as const
 
 export const WETH_ABI = [

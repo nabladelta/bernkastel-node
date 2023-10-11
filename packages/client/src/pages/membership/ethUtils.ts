@@ -117,3 +117,11 @@ export async function withdrawRLNMembership(rlnContract: RLNContract, secret: bi
         throw new Error("Transaction failed")
     }
 }
+
+export async function releaseRLNWithdrawal(rlnContract: RLNContract, secret: bigint) {
+    const identityCommitment = poseidon1([secret])
+    const tx = await rlnContract.release(identityCommitment)
+    if (tx.status === 0) {
+        throw new Error("Transaction failed")
+    }
+}

@@ -18,7 +18,7 @@ import { ArrowBackIcon, ArrowDownIcon, ArrowUpIcon, CopyIcon } from '@chakra-ui/
 import { Link } from 'react-router-dom'
 import { useToast } from '@chakra-ui/react'
 import { RLNContract } from '@nabladelta/rln'
-import { User, Withdrawal, calculateNecessaryWETHBalance, connectMetaMask, getSecret, registerRLNMembership, withdrawRLNMembership } from './ethUtils'
+import { User, Withdrawal, calculateNecessaryWETHBalance, connectMetaMask, getSecret, registerRLNMembership, releaseRLNWithdrawal, withdrawRLNMembership } from './ethUtils'
 import { contractData } from './contractData'
 import { ethers } from 'ethers'
 import { poseidon1 } from 'poseidon-lite'
@@ -103,9 +103,9 @@ function MembershipSetup() {
     }
     const withdrawal = await contract.getWithdrawal(identityCommitment)
     if (withdrawal.amount > 0) {
+      console.log(withdrawal)
       setWithdrawal(withdrawal)
     }
-    console.log(user, withdrawal)
 
     setRlnContract(contract)
     toast({
@@ -151,7 +151,7 @@ function MembershipSetup() {
       await withdrawRLNMembership(rlnContract, secret, membership.userAddress)
       toast({
           title: "Withdrawal Started",
-          description: "This is a two step process. Please wait for the next block to complete the withdrawal.",
+          description: `This is a two step process. Please wait for ${contractData.freezePeriod} blocks to complete the withdrawal.`,
           status: "success",
           duration: 5000,
           isClosable: true,
@@ -167,6 +167,45 @@ function MembershipSetup() {
       })
   }
   }
+
+  async function releaseWithdrawal() {
+    if (!rlnContract || !secret || !withdrawal) {
+      return
+    }
+    const provider = rlnContract["provider"]
+    const blockn = await provider.getBlockNumber()
+    const releaseBlock = parseInt(withdrawal.blockNumber.toString()) + contractData.freezePeriod
+    if (blockn < releaseBlock) {
+      toast({
+          title: "Withdrawal error",
+          description: `Please wait for ${releaseBlock - blockn} more blocks to release your withdrawal.`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+      })
+      return
+    }
+  try {
+      await releaseRLNWithdrawal(rlnContract, secret)
+      toast({
+          title: "Withdrawal Released",
+          description: "You are receiving your funds",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+      })
+  } catch (e) {
+      console.error(e)
+      toast({
+          title: "Withdrawal error",
+          description: `${e}`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+      })
+  }
+  }
+
 
   return (
     <VStack align="flex-start" spacing={8}>
@@ -237,6 +276,30 @@ function MembershipSetup() {
         </InputGroup>
         </FormControl>
         <Button onClick={async () => { await withdrawMembership()}} {...buttonStyle}>Withdraw from RLN Group</Button>
+    </>}
+    {rlnContract && withdrawal && <>
+        <FormControl>
+        <FormLabel htmlFor="disabledInput">Your Secret</FormLabel>
+        <InputGroup>
+            <Input ref={inputRef} value={secret?.toString(16)} isReadOnly={true} />
+            <InputRightAddon>
+            <IconButton aria-label='Copy Secret' onClick={handleCopyClick} {...buttonStyle} icon={<CopyIcon />} />
+            </InputRightAddon>
+        </InputGroup>
+        </FormControl>
+        <FormControl>
+        <FormLabel htmlFor="disabledInput">Pending withdrawal will be available for release at block:</FormLabel>
+        <InputGroup>
+            <Input value={parseInt(withdrawal.blockNumber.toString()) + contractData.freezePeriod} isReadOnly={true} />
+        </InputGroup>
+        </FormControl>
+        <FormControl>
+        <FormLabel htmlFor="disabledInput">Your Withdrawal Amount</FormLabel>
+        <InputGroup>
+            <Input value={ethers.formatEther(withdrawal.amount)} isReadOnly={true} />
+        </InputGroup>
+        </FormControl>
+        <Button onClick={async () => { await releaseWithdrawal()}} {...buttonStyle}>Attempt to release withdrawal</Button>
     </>}
     </Wrap>
     <HStack id={'bottom'} spacing={6}>
