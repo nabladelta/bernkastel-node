@@ -25,7 +25,6 @@ import { poseidon1 } from 'poseidon-lite'
 
 export const buttonStyle = { variant:'outline', colorScheme:'gray', fontSize:'20px' }
 
-
 function MembershipSetup() {
   const toast = useToast()
 
@@ -37,6 +36,7 @@ function MembershipSetup() {
   const [error, setError] = useState<string | null>(null)
   const [multiplier, setMultiplier] = useState<string>("1")
   const [price, setPrice] = useState<string>(ethers.formatEther(calculateNecessaryWETHBalance(1)) + " ETH")
+
   const handleIntegerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMultiplier(e.target.value);
     if (parseInt(e.target.value) < 1 || parseInt(e.target.value) > 1000 || !Number.isInteger(parseInt(e.target.value))) {
@@ -146,26 +146,26 @@ function MembershipSetup() {
   async function withdrawMembership() {
     if (!rlnContract || !secret || !membership) {
       return
-  }
-  try {
-      await withdrawRLNMembership(rlnContract, secret, membership.userAddress)
-      toast({
-          title: "Withdrawal Started",
-          description: `This is a two step process. Please wait for ${contractData.freezePeriod} blocks to complete the withdrawal.`,
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-      })
-  } catch (e) {
-      console.error(e)
-      toast({
-          title: "Withdrawal error",
-          description: `${e}`,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-      })
-  }
+    }
+    try {
+        await withdrawRLNMembership(rlnContract, secret, membership.userAddress)
+        toast({
+            title: "Withdrawal Started",
+            description: `This is a two step process. Please wait for ${contractData.freezePeriod} blocks to complete the withdrawal.`,
+            status: "success",
+            duration: 5000,
+            isClosable: true,
+        })
+    } catch (e) {
+        console.error(e)
+        toast({
+            title: "Withdrawal error",
+            description: `${e}`,
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+        })
+    }
   }
 
   async function releaseWithdrawal() {
@@ -185,27 +185,26 @@ function MembershipSetup() {
       })
       return
     }
-  try {
-      await releaseRLNWithdrawal(rlnContract, secret)
-      toast({
-          title: "Withdrawal Released",
-          description: "You are receiving your funds",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-      })
-  } catch (e) {
-      console.error(e)
-      toast({
-          title: "Withdrawal error",
-          description: `${e}`,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-      })
+    try {
+        await releaseRLNWithdrawal(rlnContract, secret)
+        toast({
+            title: "Withdrawal Released",
+            description: "You are receiving your funds",
+            status: "success",
+            duration: 5000,
+            isClosable: true,
+        })
+    } catch (e) {
+        console.error(e)
+        toast({
+            title: "Withdrawal error",
+            description: `${e}`,
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+        })
+    }
   }
-  }
-
 
   return (
     <VStack align="flex-start" spacing={8}>

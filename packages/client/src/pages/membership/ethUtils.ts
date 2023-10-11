@@ -4,7 +4,6 @@ import crypto from "crypto"
 import { WETH_ABI, WETH_ADDRESS, contractData } from "./contractData";
 import { RLNContract } from '@nabladelta/rln'
 import { poseidon1 } from 'poseidon-lite'
-import { Proof } from "@nabladelta/rln/src/providers/contractProvider/contractWrapper";
 import { WithdrawProver, getDefaultWithdrawParams } from 'rlnjs'
 
 export type User = {
