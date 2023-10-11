@@ -66,10 +66,10 @@ async function ensureWETHBalance(desiredBalanceWei: bigint, provider: ethers.Pro
 
     const WETHContract = new ethers.Contract(WETH_ADDRESS, WETH_ABI, signer)
     // Check WETH balance
-    const currentBalance = await WETHContract.balanceOf(signer.getAddress())
+    const currentBalance = BigInt((await WETHContract.balanceOf(signer.getAddress())).toString())
     console.log("Current WETH balance:", currentBalance.toString())
     // Check if current balance is less than desired balance
-    if (currentBalance.lt(desiredBalanceWei)) {
+    if (currentBalance < desiredBalanceWei) {
         const differenceWei = desiredBalanceWei - currentBalance
 
         // Deposit difference
