@@ -5,7 +5,13 @@ import path from 'path'
 import fs from 'fs'
 import { DATA_FOLDER, PORT, REQ_SIZE_LIMIT, THUMB_FORMAT, TOPICS } from './constants.js'
 import { mainLogger } from './logger.js'
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { contractSetup } from './setup.js'
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 import { Bernkastel } from '@nabladelta/bernkastel'
 
 const log = mainLogger.getSubLogger({name: 'HTTP'})
@@ -65,8 +71,7 @@ app.get('/api/file/:topic/:id\.:ext?', async (req: Request, res: Response) => {
 
   const client = topics.get(topic)
   if (!client) return NotFoundError(res)
-  // const content = await client.retrieveAttachment(attachmentHash)
-  const content = null
+  const content = await client.getAttachment(attachmentHash)
   if (!content) return NotFoundError(res)
   const {mime, data} = decodeMime(content)
   if (mime && mime.length > 0) {
@@ -92,8 +97,7 @@ app.get(`/api/thumb/:topic/:id\.:ext?`, async (req: Request, res: Response) => {
     const attachmentHash = req.params.id
     const client = topics.get(topic)
     if (!client) return NotFoundError(res)
-    // const content = await client.retrieveAttachment(attachmentHash)
-    const content = null
+    const content = await client.getAttachment(attachmentHash)
     if (!content) return NotFoundError(res)
     const { data } = decodeMime(content)
     const result = await makeThumbnail(data, filename)
@@ -120,11 +124,12 @@ app.post('/api/:topic/thread/:id\.:ext?', async (req: Request, res: Response) =>
     if (!client) return NotFoundError(res)
     const post: IPost = req.body.post
     try {
+      let attachment: Uint8Array | undefined
       if (req.body.attachments && req.body.attachments[0]) {
-        const {attachment} = await processAttachment(req.body.attachments[0], post, req.params.topic)
-        // await client.saveAttachment(attachment)
+        const res = await processAttachment(req.body.attachments[0], post, req.params.topic)
+        attachment = res.attachment
       }
-      const core = await client.newPost(post)
+      const core = await client.newPost(post, attachment)
   
       if (!core) return FailedPost(res)
   
@@ -141,11 +146,12 @@ app.post('/api/:topic', async (req: Request, res: Response) => {
   if (!client) return NotFoundError(res)
   const post: IPost = req.body.post
   try {
+    let attachment: Uint8Array | undefined
     if (req.body.attachments && req.body.attachments[0]) {
-      const {attachment} = await processAttachment(req.body.attachments[0], post, req.params.topic)
-      // await client.saveAttachment(attachment)
+      const res = await processAttachment(req.body.attachments[0], post, req.params.topic)
+      attachment = res.attachment
     }
-    const { result, eventID, exists } = await client.newThread(post)
+    const { result, eventID, exists } = await client.newThread(post, attachment)
     if (!result) return FailedPost(res)
     if (!eventID) return FailedPost(res)
     const thread = await client.getThreadContent(eventID)
@@ -154,6 +160,7 @@ app.post('/api/:topic', async (req: Request, res: Response) => {
     FailedException(res, (e as Error).message)
   }
 })
+
 app.use(express.static(path.join(__dirname, '../../client/build')))
 app.get('(/*)?', function (req, res) {
    res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));

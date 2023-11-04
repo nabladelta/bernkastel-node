@@ -5,11 +5,12 @@ import mime from 'mime'
 import MediaInfo from 'mediainfo.js'
 import { FILE_SIZE_LIMIT_UPLOAD, THUMB_FORMAT, THUMB_SIZE } from './constants.js'
 import { mainLogger } from './logger.js'
+//@ts-ignore
 import c from 'compact-encoding'
 
 const log = mainLogger.getSubLogger({name: 'HTTP'})
 
-export function encodeMime(data: Buffer, mime: string = ""): Buffer {
+export function encodeMime(data: Uint8Array, mime: string = ""): Uint8Array {
     const state = c.state()
     c.string.preencode(state, mime)
     c.buffer.preencode(state, data)
@@ -19,7 +20,7 @@ export function encodeMime(data: Buffer, mime: string = ""): Buffer {
     return state.buffer
 }
 
-export function decodeMime(buffer: Buffer): {mime: string, data: Buffer} {
+export function decodeMime(buffer: Uint8Array): {mime: string, data: Uint8Array} {
     const state = { start: 0, end: buffer.length, buffer, cache: null }
     const mime = c.string.decode(state)
     const data = c.buffer.decode(state)
@@ -59,7 +60,6 @@ export async function processAttachment(fileData: IFileData, post: IPost, topic:
     post.filename = fileData.filename.slice(0, pos)
     post.ext = fileData.filename.slice(pos) // Includes ., ex: ".jpg"
     post.fsize = buf.length
-    post.tim = crypto.createHash('sha256').update(encoded).digest('hex')
     return { post, attachment: encoded }
 }
 
@@ -95,7 +95,7 @@ async function processVideo(buf: Buffer) {
 }
 
 
-export async function makeThumbnail(data: Buffer, filename?: string) {
+export async function makeThumbnail(data: Uint8Array, filename?: string) {
     try {
         const i = sharp(data).resize(
             THUMB_SIZE, THUMB_SIZE,
