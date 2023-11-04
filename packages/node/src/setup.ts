@@ -2,6 +2,12 @@ import { RLN, ContractProvider, RLNContract } from "@nabladelta/rln"
 import { ethers } from "ethers"
 import { getDefaultWithdrawParams } from 'rlnjs'
 import { DATA_FOLDER, GROUPID, GROUP_FILE, SECRET, TOPICS, PRIVATE_KEY, CONTRACT_ADDRESS, BLOCKCHAIN_RPC, BLOCKCHAIN_RPC_WS, CONTRACT_AT_BLOCK } from './constants.js'
+import { Bernkastel } from '@nabladelta/bernkastel'
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // export async function nodeSetup(logger: any) {
 //     const rln = await RLN.load(SECRET!, GROUP_FILE)
@@ -10,13 +16,6 @@ import { DATA_FOLDER, GROUPID, GROUP_FILE, SECRET, TOPICS, PRIVATE_KEY, CONTRACT
 //     await node.join(TOPICS!.split(','))
 //     return { node }
 // }
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-//@ts-ignore
-import { Bernkastel } from '@nabladelta/bernkastel'
 
 export async function contractSetup(logger: any) {
     const provider = BLOCKCHAIN_RPC_WS ? new ethers.WebSocketProvider(BLOCKCHAIN_RPC_WS) : new ethers.JsonRpcProvider(BLOCKCHAIN_RPC)

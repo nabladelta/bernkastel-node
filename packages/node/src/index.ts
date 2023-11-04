@@ -157,14 +157,16 @@ app.post('/api/:topic', async (req: Request, res: Response) => {
     const thread = await client.getThreadContent(eventID)
     res.send({success: true, op: eventID, thread: thread})
   } catch (e) {
+    log.error(e)
     FailedException(res, (e as Error).message)
   }
 })
 
 app.use(express.static(path.join(__dirname, '../../client/build')))
+
 app.get('(/*)?', function (req, res) {
    res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));
- })
+})
 
 contractSetup(mainLogger.getSubLogger({name: 'NODE'})).then(async ({createTopic}) => {
   for (let topic of TOPICS.split(',')) {
