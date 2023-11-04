@@ -1,16 +1,16 @@
 import express, { Express, Request, Response } from 'express'
 import cors from 'cors'
-import { decodeMime, fileExists, makeThumbnail, processAttachment } from './lib'
+import { decodeMime, fileExists, makeThumbnail, processAttachment } from './lib.js'
 import path from 'path'
 import fs from 'fs'
-import { DATA_FOLDER, PORT, REQ_SIZE_LIMIT, THUMB_FORMAT, TOPICS } from './constants'
-import { mainLogger } from './logger'
-import { contractSetup } from './setup'
-import { BBNode } from '@nabladelta/bernkastel'
+import { DATA_FOLDER, PORT, REQ_SIZE_LIMIT, THUMB_FORMAT, TOPICS } from './constants.js'
+import { mainLogger } from './logger.js'
+import { contractSetup } from './setup.js'
+import { Bernkastel } from '@nabladelta/bernkastel'
 
 const log = mainLogger.getSubLogger({name: 'HTTP'})
 
-let node: BBNode
+const topics = new Map<string, Bernkastel>()
 
 const app: Express = express()
 
@@ -35,7 +35,7 @@ function FailedException(res: express.Response, message: string) {
 }
 
 app.get('/api/:topic/thread/:id\.:ext?', async (req: Request, res: Response) => {
-    const client = node.getTopic(req.params.topic)
+    const client = topics.get(req.params.topic)
     if (!client) return NotFoundError(res)
 
     const thread = await client.getThreadContent(req.params.id)
@@ -44,7 +44,7 @@ app.get('/api/:topic/thread/:id\.:ext?', async (req: Request, res: Response) => 
 })
 
 app.get('/api/:topic/catalog\.:ext?', async (req: Request, res: Response) => {
-  const client = node.getTopic(req.params.topic)
+  const client = topics.get(req.params.topic)
   if (!client) return NotFoundError(res)
 
   const catalog = await client.getCatalog()
@@ -63,9 +63,10 @@ app.get('/api/file/:topic/:id\.:ext?', async (req: Request, res: Response) => {
   const topic = req.params.topic
   const attachmentHash = req.params.id
 
-  const client = node.getTopic(topic)
+  const client = topics.get(topic)
   if (!client) return NotFoundError(res)
-  const content = await client.retrieveAttachment(attachmentHash)
+  // const content = await client.retrieveAttachment(attachmentHash)
+  const content = null
   if (!content) return NotFoundError(res)
   const {mime, data} = decodeMime(content)
   if (mime && mime.length > 0) {
@@ -89,9 +90,10 @@ app.get(`/api/thumb/:topic/:id\.:ext?`, async (req: Request, res: Response) => {
   if (!await fileExists(filename)) {
     const topic = req.params.topic
     const attachmentHash = req.params.id
-    const client = node.getTopic(topic)
+    const client = topics.get(topic)
     if (!client) return NotFoundError(res)
-    const content = await client.retrieveAttachment(attachmentHash)
+    // const content = await client.retrieveAttachment(attachmentHash)
+    const content = null
     if (!content) return NotFoundError(res)
     const { data } = decodeMime(content)
     const result = await makeThumbnail(data, filename)
@@ -114,13 +116,13 @@ app.get(`/api/thumb/:topic/:id\.:ext?`, async (req: Request, res: Response) => {
 })
 
 app.post('/api/:topic/thread/:id\.:ext?', async (req: Request, res: Response) => {
-    const client = node.getTopic(req.params.topic)
+    const client = topics.get(req.params.topic)
     if (!client) return NotFoundError(res)
     const post: IPost = req.body.post
     try {
       if (req.body.attachments && req.body.attachments[0]) {
         const {attachment} = await processAttachment(req.body.attachments[0], post, req.params.topic)
-        await client.saveAttachment(attachment)
+        // await client.saveAttachment(attachment)
       }
       const core = await client.newPost(post)
   
@@ -135,19 +137,19 @@ app.post('/api/:topic/thread/:id\.:ext?', async (req: Request, res: Response) =>
 })
 
 app.post('/api/:topic', async (req: Request, res: Response) => {
-  const client = node.getTopic(req.params.topic)
+  const client = topics.get(req.params.topic)
   if (!client) return NotFoundError(res)
   const post: IPost = req.body.post
   try {
     if (req.body.attachments && req.body.attachments[0]) {
       const {attachment} = await processAttachment(req.body.attachments[0], post, req.params.topic)
-      await client.saveAttachment(attachment)
+      // await client.saveAttachment(attachment)
     }
-    const threadId = await client.newThread(post)
-    if (!threadId) return FailedPost(res)
-    const thread = await client.getThreadContent(threadId)
-    res.send({success: true, op: threadId, thread: thread})
-
+    const { result, eventID, exists } = await client.newThread(post)
+    if (!result) return FailedPost(res)
+    if (!eventID) return FailedPost(res)
+    const thread = await client.getThreadContent(eventID)
+    res.send({success: true, op: eventID, thread: thread})
   } catch (e) {
     FailedException(res, (e as Error).message)
   }
@@ -157,8 +159,10 @@ app.get('(/*)?', function (req, res) {
    res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));
  })
 
- contractSetup(mainLogger.getSubLogger({name: 'NODE'})).then(n => {
-  node = n.node
+contractSetup(mainLogger.getSubLogger({name: 'NODE'})).then(async ({createTopic}) => {
+  for (let topic of TOPICS.split(',')) {
+    topics.set(topic, await createTopic(topic))
+  }
   app.listen(PORT, () => {
     log.info(`⚡️API is running at http://localhost:${PORT}`)
   })

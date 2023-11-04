@@ -5,6 +5,7 @@
   "directories": {
     "doc": "docs"
   },
+  "type": "module",
   "scripts": {
     "build": "tsc --build"
   },
@@ -14,11 +15,14 @@
   "author": "moot",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.0.4",
-    "@types/node": "^20.1.7",
-    "ts-node": "^10.9.1",
     "@types/jest": "^29.4.0",
+    "@types/node": "^20.1.7",
+    "jest": "^29.4.3",
     "ts-jest": "^29.0.5",
-    "jest": "^29.4.3"
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "@nabladelta/rln": "^1.0.19"
   }
 }
