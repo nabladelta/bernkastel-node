@@ -29,6 +29,9 @@ export async function contractSetup(logger: any) {
 
     const secret = await ContractProvider.secretFromSigner(wallet, CONTRACT_ADDRESS)
     const rln = await RLN.loadCustom(secret, rlnProvider, {})
-    const createTopic = async (topic: string) => await Bernkastel.create({topic, groupID: GROUPID, rln, logger})
+    const createTopic = async (topic: string) => await Bernkastel.create(
+        // @ts-ignore
+        {topic, groupID: GROUPID, rln, logger}
+    )
     return { createTopic }
 }
